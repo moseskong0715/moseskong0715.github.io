@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>F1 遙測數據分析儀表板 - GitHub Pages 修正版</title>
+    <title>F1 遙測數據分析儀表板 - GitHub Pages 靜態版</title>
     <style>
         :root {
             --primary-color: #e10600; /* F1 經典紅 */
@@ -51,7 +51,7 @@
             border: 1px solid var(--primary-color);
         }
 
-        /* 控制區 */
+        /* 檔案上傳控制區 */
         .upload-section {
             background-color: var(--card-bg);
             border: 2px dashed #444;
@@ -106,7 +106,7 @@
             border-radius: 4px;
         }
 
-        /* 看板面板 */
+        /* 數據看板區塊 */
         .dashboard-section {
             background-color: var(--card-bg);
             border-radius: 8px;
@@ -128,35 +128,7 @@
 
         .section-title span { margin-right: 10px; }
 
-        /* 三欄佈局 (Q1/Q2/Q3 獨立列表) */
-        .quali-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .quali-card {
-            background-color: var(--card-bg);
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-            display: none;
-        }
-        .quali-card.q1-card { border-top: 4px solid #ff4500; }
-        .quali-card.q2-card { border-top: 4px solid #ff8c00; }
-        .quali-card.q3-card { border-top: 4px solid var(--accent-blue); }
-
-        .card-title {
-            font-size: 1.25rem;
-            font-weight: bold;
-            margin-top: 0;
-            margin-bottom: 15px;
-            padding-bottom: 5px;
-            border-bottom: 1px solid #333;
-        }
-
-        /* 表格通用設定 */
+        /* 表格設定 */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -168,15 +140,15 @@
             background-color: var(--table-header);
             color: var(--text-muted);
             font-weight: 600;
-            padding: 10px 12px;
-            font-size: 0.85rem;
+            padding: 12px 15px;
+            font-size: 0.9rem;
             text-transform: uppercase;
         }
 
         td {
-            padding: 10px 12px;
+            padding: 12px 15px;
             border-bottom: 1px solid #2d2d3d;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
         }
 
         tr:hover td { background-color: rgba(255, 255, 255, 0.02); }
@@ -220,7 +192,7 @@
 
 <div class="container">
     <header>
-        <h1>F1 遙測數據分析儀表板0112</h1>
+        <h1>F1 遙測數據分析儀表板</h1>
         <div class="subtitle" id="track-display">目前賽道：<span class="track-badge">等待遙測 JSON 數據上傳...</span></div>
     </header>
 
@@ -229,12 +201,12 @@
             <label for="telemetry-files" class="custom-file-upload">📂 選擇一或多個 F1 數據 JSON 檔案 (可多選)</label>
             <input type="file" id="telemetry-files" accept=".json" multiple>
         </div>
-        <div id="file-list-preview" class="file-list-preview">請選取包含 Race 或 Qualifying_1/2/3 的遊戲導出數據。</div>
+        <div id="file-list-preview" class="file-list-preview">請選取包含 Race 或 Qualifying 的遊戲導出 JSON 數據。</div>
         <button id="btn-analyze" class="btn-analyze">開始分析數據</button>
     </div>
 
     <div id="waiting-placeholder" class="placeholder-text">
-        💡 提示：本工具完全基於前端解析。您可以同時選中多個排位賽階段及正賽檔案，一鍵生成多模組看板。
+        💡 提示：本工具完全在瀏覽器本地安全解析，不依賴任何後端伺服器，完美支援 GitHub Pages 靜態部署。
     </div>
 
     <div id="section-race-results" class="dashboard-section">
@@ -273,56 +245,6 @@
             <tbody></tbody>
         </table>
     </div>
-
-    <div class="quali-grid">
-        <div id="card-q1" class="quali-card q1-card">
-            <div class="card-title">🔥 Q1 階段圈速榜</div>
-            <table id="table-q1">
-                <thead>
-                    <tr>
-                        <th>POS</th>
-                        <th>車手</th>
-                        <th>車隊</th>
-                        <th>圈速</th>
-                        <th>差距</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-
-        <div id="card-q2" class="quali-card q2-card">
-            <div class="card-title">⚡ Q2 階段圈速榜</div>
-            <table id="table-q2">
-                <thead>
-                    <tr>
-                        <th>POS</th>
-                        <th>車手</th>
-                        <th>車隊</th>
-                        <th>圈速</th>
-                        <th>差距</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-
-        <div id="card-q3" class="quali-card q3-card">
-            <div class="card-title">🏆 Q3 階段決戰榜</div>
-            <table id="table-q3">
-                <thead>
-                    <tr>
-                        <th>POS</th>
-                        <th>車手</th>
-                        <th>車隊</th>
-                        <th>圈速</th>
-                        <th>差距</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-    </div>
 </div>
 
 <footer>
@@ -338,10 +260,7 @@
     
     const sections = {
         raceResults: document.getElementById('section-race-results'),
-        qualiCombined: document.getElementById('section-quali-combined'),
-        q1Card: document.getElementById('card-q1'),
-        q2Card: document.getElementById('card-q2'),
-        q3Card: document.getElementById('card-q3')
+        qualiCombined: document.getElementById('section-quali-combined')
     };
 
     const TRACK_MAP = {
@@ -381,9 +300,6 @@
         waitingPlaceholder.style.display = 'none';
         sections.raceResults.style.display = 'none';
         sections.qualiCombined.style.display = 'none';
-        sections.q1Card.style.display = 'none';
-        sections.q2Card.style.display = 'none';
-        sections.q3Card.style.display = 'none';
 
         let raceData = null;
         let q1Data = null, q2Data = null, q3Data = null;
@@ -413,8 +329,6 @@
                     }
                     if (!detectedTrackName && name.includes('jeddah')) {
                         detectedTrackName = "吉達濱海賽道 Jeddah (沙烏地阿拉伯)";
-                    } else if (!detectedTrackName && name.includes('baku')) {
-                        detectedTrackName = "巴庫 Baku (亞塞拜然)";
                     }
 
                     filesLoaded++;
@@ -448,7 +362,7 @@
     }
 
     function processAndRender(race, q1, q2, q3) {
-        // --- 1. 正賽排名渲染 ---
+        // --- 1. 正賽排名渲染（第一名置頂排列） ---
         if (race && race["classification-data"]) {
             sections.raceResults.style.display = 'block';
             const tbodyRace = document.querySelector('#table-race tbody');
@@ -473,12 +387,14 @@
 
             let driversList = [...race["classification-data"]];
             
+            // 正賽結果依據完賽位置 (Position) 進行升序排序，保證 P1 置頂
             driversList.sort((a, b) => {
                 const posA = (a["final-classification"] && a["final-classification"]["position"]) || a["track-position"] || 99;
                 const posB = (b["final-classification"] && b["final-classification"]["position"]) || b["track-position"] || 99;
                 return posA - posB;
             });
 
+            // 尋找全場最快圈速
             let sessionBestLapMs = Infinity;
             let sessionBestLapDriver = "";
             driversList.forEach(car => {
@@ -534,17 +450,13 @@
             });
         }
 
-        // --- 2 & 3. 排位賽數據精確清洗與分流 ---
+        // --- 2. 排位賽綜合數據解析與排行 ---
         if (q1 || q2 || q3) {
             sections.qualiCombined.style.display = 'block';
             const tbodyCombined = document.querySelector('#table-quali-combined tbody');
             tbodyCombined.innerHTML = '';
 
-            // 【徹底重置核心緩存】防止多次點擊或歷史數據交叉污染
             let combinedDrivers = {};
-
-            // 用於儲存三個階段真正有效的單圈數據（徹底杜絕階段錯位）
-            let stageStrictData = { q1: [], q2: [], q3: [] };
 
             const parseQualiStage = (stageData, stageName) => {
                 if (!stageData || !stageData["classification-data"]) return;
@@ -553,43 +465,30 @@
                     const name = car["driver-name"];
                     const team = car["team"] || "未指定";
                     
-                    // 提取此單一 JSON 檔案內的最終分類最佳單圈
                     const fc = car["final-classification"];
                     const bestLapMs = fc && fc["best-lap-time-ms"] ? fc["best-lap-time-ms"] : 0;
                     
-                    // 【嚴格驗證】只有在當前階段圈速大於 0 的車手才被承認加入了該階段跑圈
                     if (bestLapMs > 0) {
                         const lapInSeconds = bestLapMs / 1000;
                         
-                        // 1. 更新綜合排行對象
                         if (!combinedDrivers[name]) {
                             combinedDrivers[name] = { name: name, team: team, q1: 0, q2: 0, q3: 0, maxStage: "Q1" };
                         }
                         combinedDrivers[name][stageName] = lapInSeconds;
                         
-                        // 更新最高進入階段（權重覆蓋）
                         const STAGE_LEVELS = { 'q1': 'Q1', 'q2': 'Q2', 'q3': 'Q3' };
                         const currentWeight = { 'Q1': 1, 'Q2': 2, 'Q3': 3 };
                         if (currentWeight[STAGE_LEVELS[stageName]] > currentWeight[combinedDrivers[name].maxStage]) {
                             combinedDrivers[name].maxStage = STAGE_LEVELS[stageName];
                         }
-
-                        // 2. 寫入該階段嚴格獨立的陣列中，供獨立列表渲染使用
-                        stageStrictData[stageName].push({
-                            name: name,
-                            team: team,
-                            lapTime: lapInSeconds
-                        });
                     }
                 });
             };
 
-            // 按順序獨立解析
             parseQualiStage(q1, 'q1');
             parseQualiStage(q2, 'q2');
             parseQualiStage(q3, 'q3');
 
-            // 綜合排名邏輯生成
             const STAGE_WEIGHT = { 'Q3': 3, 'Q2': 2, 'Q1': 1 };
             let sortedQuali = Object.values(combinedDrivers).sort((a, b) => {
                 if (STAGE_WEIGHT[a.maxStage] !== STAGE_WEIGHT[b.maxStage]) {
@@ -612,39 +511,6 @@
                     </tr>
                 `;
             });
-
-            // 【新邏輯】使用精確清洗後的數據單獨渲染三個分流列表，絕不串場
-            const renderIndividualStage = (stageKey, cardEl, tableId) => {
-                let drivers = stageStrictData[stageKey];
-                
-                // 只有當該階段確實有合法跑圈數據時才顯示卡片
-                if (drivers && drivers.length > 0) {
-                    // 由快到慢排序
-                    drivers.sort((a, b) => a.lapTime - b.lapTime);
-                    
-                    cardEl.style.display = 'block';
-                    const tbody = document.querySelector(`#${tableId} tbody`);
-                    tbody.innerHTML = '';
-                    
-                    const leaderTime = drivers[0].lapTime;
-                    drivers.forEach((d, idx) => {
-                        const gap = idx === 0 ? "P1 榜首" : `+${(d.lapTime - leaderTime).toFixed(3)}s`;
-                        tbody.innerHTML += `
-                            <tr>
-                                <td><strong>${idx + 1}</strong></td>
-                                <td>${d.name}</td>
-                                <td>${d.team}</td>
-                                <td>${formatLapTime(d.lapTime)}</td>
-                                <td style="color:${idx === 0 ? 'var(--accent-green)' : 'inherit'}">${gap}</td>
-                            </tr>
-                        `;
-                    });
-                }
-            };
-
-            renderIndividualStage('q1', sections.q1Card, 'table-q1');
-            renderIndividualStage('q2', sections.q2Card, 'table-q2');
-            renderIndividualStage('q3', sections.q3Card, 'table-q3');
         }
     }
 </script>
