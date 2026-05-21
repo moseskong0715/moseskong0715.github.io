@@ -87,9 +87,11 @@
             cursor: pointer;
             margin-top: 15px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: opacity 0.2s;
         }
 
         .btn-analyze:hover { background-color: #b80500; }
+        .btn-analyze:disabled { background-color: #555; cursor: not-allowed; opacity: 0.6; }
         
         .file-list-preview {
             margin-top: 15px;
@@ -302,13 +304,20 @@
             return;
         }
         
+        // 進入加載狀態，避免大檔案解析時重複點擊
+        btnAnalyze.disabled = true;
+        btnAnalyze.textContent = "⏳ 數據深度解析中...";
+        
+        // 先隱藏舊的看板與歡迎文字
+        waitingPlaceholder.style.display = 'none';
+        sections.raceResults.style.display = 'none';
+        sections.qualiCombined.style.display = 'none';
+        sections.qualiStages.style.display = 'none';
+
         let raceData = null;
         let q1Data = null, q2Data = null, q3Data = null;
         let filesLoaded = 0;
         let detectedTrackName = "";
-
-        // 隱藏歡迎文字
-        waitingPlaceholder.style.display = 'none';
 
         Array.from(files).forEach(file => {
             console.log("開始讀取檔案:", file.name);
@@ -342,17 +351,28 @@
                         trackDisplay.innerHTML = `目前賽道：<span class="track-badge">📍 ${detectedTrackName}</span>`;
                         
                         console.log("所有上傳檔案讀取完畢，開始生成報表...");
-                        processAndRender(raceData, q1Data, q2Data, q3Data);
+                        
+                        // 使用 setTimeout 確保 UI 有時間刷新加載文字
+                        setTimeout(() => {
+                            processAndRender(raceData, q1Data, q2Data, q3Data);
+                            // 恢復按鈕狀態
+                            btnAnalyze.disabled = false;
+                            btnAnalyze.textContent = "開始分析數據";
+                        }, 50);
                     }
                 } catch (err) {
                     console.error("JSON 解析錯誤:", err);
                     alert(`檔案 [${file.name}] 解析出錯！請確保它是標準的 JSON 文字檔案。錯誤訊息: ${err.message}`);
+                    btnAnalyze.disabled = false;
+                    btnAnalyze.textContent = "開始分析數據";
                 }
             };
 
             reader.onerror = function() {
                 console.error("檔案讀取失敗");
                 alert(`讀取檔案 [${file.name}] 時發生瀏覽器底層錯誤。`);
+                btnAnalyze.disabled = false;
+                btnAnalyze.textContent = "開始分析數據";
             };
 
             // 以文字檔格式讀取
@@ -492,14 +512,18 @@
             parseQualiStage(q2, 'q2');
             parseQualiStage(q3, 'q3');
 
+            // 【已修正：排位賽綜合排名嚴格邏輯】
+            const STAGE_WEIGHT = { 'Q3': 3, 'Q2': 2, 'Q1': 1 };
             let sortedQuali = Object.values(combinedDrivers).sort((a, b) => {
-                if (a.q3 && b.q3) return a.q3 - b.q3;
-                if (a.q3 && !b.q3) return -1;
-                if (!a.q3 && b.q3) return 1;
-                if (a.q2 && b.q2) return a.q2 - b.q2;
-                if (a.q2 && !b.q2) return -1;
-                if (!a.q2 && b.q2) return 1;
-                return (a.q1 || 999) - (b.q1 || 999);
+                // 1. 先比對最高進入的階段
+                if (STAGE_WEIGHT[a.maxStage] !== STAGE_WEIGHT[b.maxStage]) {
+                    return STAGE_WEIGHT[b.maxStage] - STAGE_WEIGHT[a.maxStage];
+                }
+                // 2. 若最高階段相同，則比對該階段的最快圈速
+                const currentStageKey = a.maxStage.toLowerCase();
+                const timeA = a[currentStageKey] || Infinity;
+                const timeB = b[currentStageKey] || Infinity;
+                return timeA - timeB;
             });
 
             sortedQuali.forEach((d, idx) => {
