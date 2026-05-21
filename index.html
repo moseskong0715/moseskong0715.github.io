@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>F1 遙測數據深度分析與自動整理2339</title>
+    <title>F1 遙測數據深度分析與自動整理</title>
     <style>
         :root {
             --primary-color: #e10600; /* F1 經典紅 */
@@ -40,7 +40,6 @@
         h1 { margin: 0 0 10px 0; font-size: 2.2rem; letter-spacing: 1px; }
         .subtitle { color: var(--text-muted); margin: 0; font-size: 1.1rem; }
         
-        /* 賽道識別標籤 */
         .track-badge {
             display: inline-block;
             background-color: #333;
@@ -73,7 +72,7 @@
             transition: background 0.2s;
         }
 
-        。custom-file-upload:hover { background-color: #444; }
+        .custom-file-upload:hover { background-color: #444; }
         input[type="file"] { display: none; }
 
         .btn-analyze {
@@ -92,7 +91,7 @@
 
         .btn-analyze:hover { background-color: #b80500; }
         
-        。file-list-preview {
+        .file-list-preview {
             margin-top: 15px;
             font-size: 0.9rem;
             color: var(--text-muted);
@@ -125,7 +124,7 @@
             align-items: center;
         }
 
-        。section-title span { margin-right: 10px; }
+        .section-title span { margin-right: 10px; }
 
         /* 表格樣式 */
         table {
@@ -151,6 +150,12 @@
         }
 
         tr:hover td { background-color: rgba(255, 255, 255, 0.03); }
+
+        .fastest-lap-glow {
+            color: #b026ff;
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(176, 38, 255, 0.5);
+        }
 
         .q-badge {
             display: inline-block;
@@ -261,39 +266,17 @@
         qualiStages: document.getElementById('section-quali-stages')
     };
 
-    // 賽道ID對照表 (依據 F1 遊戲標準 UDP / 遙測常數)
     const TRACK_MAP = {
+        23: "巴庫 Baku (亞塞拜然)",
         0: "墨爾本 Albert Park (澳洲)",
-        1: "保羅里卡德 Paul Ricard (法國)",
         2: "上海國際賽車場 (中國)",
         3: "薩基爾 Sakhir (巴林)",
-        4: "加泰羅尼亞 Catalunya (西班牙)",
         5: "摩納哥 Monaco (摩納哥)",
-        6: "羅德列茲 Montréal (加拿大)",
         7: "銀石 Silverstone (英國)",
-        8: "霍肯海姆 Hockenheim (德國)",
-        9: "匈牙利 Hungaroring (匈牙利)",
         10: "斯帕 Spa-Francorchamps (比利時)",
         11: "蒙扎 Monza (義大利)",
         12: "新加坡濱海灣 Marina Bay (新加坡)",
-        13: "鈴木 Suzuka (日本)",
-        14: "奧斯汀 COTA (美國)",
-        15: "英特拉格斯 Interlagos (巴西)",
-        16: "奧地利 Red Bull Ring (奧地利)",
-        17: "亞斯碼頭 Yas Marina (阿布達比)",
-        18: "美洲賽道 Austin (短賽道)",
-        19: "銀石 Silverstone (短賽道)",
-        20: "保羅里卡德 (短賽道)",
-        21: "鈴木 (短賽道)",
-        22: "墨西哥羅德里格斯 (墨西哥)",
-        23: "巴庫 Baku (亞塞拜然)",
-        24: "索契 Sochi (俄羅斯)",
-        25: "贊德沃特 Zandvoort (荷蘭)",
-        26: "伊莫拉 Imola (義大利)",
-        27: "波爾蒂芒 Portimão (葡萄牙)",
-        28: "吉達國際賽道 Jeddah (沙烏地阿拉伯)",
-        29: "邁阿密國際賽道 Miami (美國)",
-        30: "拉斯維加斯 Las Vegas (美國)"
+        13: "鈴木 Suzuka (日本)"
     };
 
     fileInput.addEventListener('change', function() {
@@ -332,33 +315,17 @@
                     else if (name.includes('qualifying_2') || name.includes('q2')) q2Data = json;
                     else if (name.includes('qualifying_3') || name.includes('q3')) q3Data = json;
 
-                    // 【賽道智慧識別邏輯】
-                    // 1. 優先嘗試從 JSON 內部的 session-data 或 track-id 欄位提取
                     if (json["session-data"] && json["session-data"]["track-id"] !== undefined) {
-                        const trackId = json["session-data"]["track-id"];
-                        if (TRACK_MAP[trackId]) detectedTrackName = TRACK_MAP[trackId];
-                    } else if (json["track-id"] !== undefined) {
-                        if (TRACK_MAP[json["track-id"]]) detectedTrackName = TRACK_MAP[json["track-id"]];
+                        detectedTrackName = TRACK_MAP[json["session-data"]["track-id"]];
                     }
-                    
-                    // 2. 如果 JSON 內部沒有標註，則透過上傳的檔名關鍵字保底識別
-                    if (!detectedTrackName) {
-                        for (const key in TRACK_MAP) {
-                            const trackKeyword = TRACK_MAP[key].split(' ')[0].toLowerCase(); // 拿城市英文名
-                            if (name.includes(trackKeyword)) {
-                                detectedTrackName = TRACK_MAP[key];
-                                break;
-                            }
-                        }
+                    if (!detectedTrackName && name.includes('baku')) {
+                        detectedTrackName = "巴庫 Baku (亞塞拜然)";
                     }
 
                     filesLoaded++;
                     
                     if (filesLoaded === files.length) {
-                        // 如果最後都沒撈到，預設為本次數據的巴庫賽道
                         if (!detectedTrackName) detectedTrackName = "巴庫 Baku (亞塞拜然)";
-                        
-                        // 更新網頁頂部的地圖顯示
                         trackDisplay.innerHTML = `目前賽道：<span class="track-badge">📍 ${detectedTrackName}</span>`;
                         
                         processAndRender(raceData, q1Data, q2Data, q3Data);
@@ -371,31 +338,108 @@
         });
     });
 
+    // 將毫秒或秒格式化為分秒字串
+    function formatLapTime(timeInSec) {
+        if (!timeInSec || timeInSec <= 0) return "---";
+        const min = Math.floor(timeInSec / 60);
+        const sec = (timeInSec % 60).toFixed(3);
+        return `${min}:${sec < 10 ? '0' : ''}${sec}`;
+    }
+
+    // 將正賽總時間格式化
+    function formatTotalTime(ms) {
+        if (!ms) return "---";
+        const totalSec = ms / 1000;
+        const hr = Math.floor(totalSec / 3600);
+        const min = Math.floor((totalSec % 3600) / 60);
+        const sec = (totalSec % 60).toFixed(3);
+        return `${hr > 0 ? hr + ':' : ''}${min < 10 && hr > 0 ? '0' : ''}${min}:${sec < 10 ? '0' : ''}${sec}`;
+    }
+
     function processAndRender(race, q1, q2, q3) {
-        // --- 1. 渲染正賽成績表 (依排名排序，第一名在最頂) ---
+        
+        // ==========================================
+        // 1. 正賽數據「全動態深度解析」引擎
+        // ==========================================
         if (race && race["classification-data"]) {
             sections.raceResults.style.display = 'block';
             const tbodyRace = document.querySelector('#table-race tbody');
             tbodyRace.innerHTML = '';
+            
             const f1Points = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
+            const raceControl = race["race-control"] || [];
 
-            let sortedRaceDrivers = [...race["classification-data"]];
-            sortedRaceDrivers.sort((a, b) => {
-                const posA = a["track-position"] || 99;
-                const posB = b["track-position"] || 99;
-                return posA - posB;
+            // 1-1. 計算每位車手的進站次數、罰時與最快圈速數值
+            let pitCounts = {};
+            let penaltyTimes = {};
+            
+            raceControl.forEach(log => {
+                const driverName = log["driver-info"] ? log["driver-info"]["name"] : null;
+                if (!driverName) return;
+
+                // 統計進站次數
+                if (log["message-type"] === "PITTING") {
+                    pitCounts[driverName] = (pitCounts[driverName] || 0) + 1;
+                }
+                // 統計幹事處罰時間
+                if (log["message-type"] === "PENALTY" && log["penalty-duration"]) {
+                    penaltyTimes[driverName] = (penaltyTimes[driverName] || 0) + log["penalty-duration"];
+                }
             });
 
-            sortedRaceDrivers.forEach((car, idx) => {
+            // 1-2. 根據完賽名次 (track-position) 進行升序排序 (第一名在最頂)
+            let driversList = [...race["classification-data"]];
+            driversList.sort((a, b) => (a["track-position"] || 99) - (b["track-position"] || 99]);
+
+            // 1-3. 找出全場最快單圈的車手與時間（用於打上 ⚡ 符號）
+            let sessionBestLap = Infinity;
+            let sessionBestLapDriver = "";
+            driversList.forEach(car => {
+                const bLap = car["best-lap-time"] || (car["car-status"] ? car["car-status"]["best-lap-time"] : 0);
+                if (bLap > 0 && bLap < sessionBestLap) {
+                    sessionBestLap = bLap;
+                    sessionBestLapDriver = car["driver-name"];
+                }
+            });
+
+            // 1-4. 取得冠軍的總時間，用於後面計算 Time Gap
+            const winnerTotalTime = driversList[0] ? driversList[0]["total-race-time"] : 0;
+
+            // 1-5. 動態渲染每一行表格
+            driversList.forEach((car, idx) => {
                 const pos = car["track-position"] || (idx + 1);
                 const name = car["driver-name"] || `車手 #${car["index"]}`;
-                const team = car["team"] || "未指定車隊";
+                const team = car["team"] || "未指定";
                 
-                const pits = (car["car-status"] && pos % 2 === 0) ? 2 : 1; 
-                const fastestLap = pos === 3 ? "1:43.512 (⚡)" : `1:45.${100 + pos * 23}`;
-                const gap = pos === 1 ? "Leader" : `+${(pos * 4.231).toFixed(3)}s`;
-                const penalty = (pos === 7) ? "5秒 (阻擋)" : "無";
-                const pts = pos <= 10 ? f1Points[pos-1] : 0;
+                // 動態進站與動態罰時
+                const pits = pitCounts[name] || 0;
+                const penaltySec = penaltyTimes[name] || 0;
+                const penaltyStr = penaltySec > 0 ? `${penaltySec}秒` : "無";
+
+                // 動態最快單圈
+                const bLapTime = car["best-lap-time"] || (car["car-status"] ? car["car-status"]["best-lap-time"] : 0);
+                let fastestLapStr = formatLapTime(bLapTime);
+                if (name === sessionBestLapDriver && bLapTime > 0) {
+                    fastestLapStr = `<span class="fastest-lap-glow">⚡ ${fastestLapStr}</span>`;
+                }
+
+                // 動態計算 總時間 / 差距
+                let gapStr = "---";
+                if (pos === 1) {
+                    gapStr = car["total-race-time"] ? formatTotalTime(car["total-race-time"]) : "Leader";
+                } else {
+                    if (car["is-retired"] || car["result-status"] === "RETIRED") {
+                        gapStr = "<span style='color:var(--primary-color)'>DNF</span>";
+                    } else if (car["laps-behind"] && car["laps-behind"] > 0) {
+                        gapStr = `+${car["laps-behind"]} Lap${car["laps-behind"] > 1 ? 's' : ''}`;
+                    } else if (car["total-race-time"] && winnerTotalTime) {
+                        const diffSec = (car["total-race-time"] - winnerTotalTime) / 1000;
+                        gapStr = `+${diffSec.toFixed(3)}s`;
+                    }
+                }
+
+                // 動態獲得積分
+                const pts = pos <= 10 && gapStr !== "DNF" ? f1Points[pos - 1] : 0;
 
                 tbodyRace.innerHTML += `
                     <tr>
@@ -403,16 +447,18 @@
                         <td>${name}</td>
                         <td>${team}</td>
                         <td>${pits}</td>
-                        <td>${fastestLap}</td>
-                        <td>${gap}</td>
-                        <td><span style="color:${penalty !== '無'?'var(--accent-warning)':'inherit'}">${penalty}</span></td>
+                        <td>${fastestLapStr}</td>
+                        <td>${gapStr}</td>
+                        <td><span style="color:${penaltyStr !== '無' ? 'var(--accent-warning)' : 'inherit'}">${penaltyStr}</span></td>
                         <td><span style="color:var(--accent-green);font-weight:bold">${pts}</span></td>
                     </tr>
                 `;
             });
         }
 
-        // --- 2. 排位賽綜合結果 & 3. 各階段最快圈速榜 ---
+        // ==========================================
+        // 2 & 3. 排位賽數據「全動態深度解析」引擎
+        // ==========================================
         if (q1 || q2 || q3) {
             sections.qualiCombined.style.display = 'block';
             sections.qualiStages.style.display = 'block';
@@ -422,58 +468,80 @@
             tbodyCombined.innerHTML = '';
             tbodyStages.innerHTML = '';
 
-            const sampleSource = q1 || q2 || q3;
-            let drivers = sampleSource["classification-data"].map(c => ({
-                name: c["driver-name"],
-                team: c["team"]
-            }));
+            // 建立跨階段車手字典
+            let combinedDrivers = {};
 
-            drivers.forEach((d, idx) => {
-                const rank = idx + 1;
-                let q1Time = `1:42.${300 + idx * 45}`;
-                let q2Time = rank <= 15 ? `1:41.${500 + idx * 35}` : "---";
-                let q3Time = rank <= 10 ? `1:40.${200 + idx * 28}` : "---";
-                let highest = rank <= 10 ? "Q3" : (rank <= 15 ? "Q2" : "Q1");
+            const parseQualiStage = (stageData, stageName) => {
+                if (!stageData || !stageData["classification-data"]) return;
+                stageData["classification-data"].forEach(car => {
+                    const name = car["driver-name"];
+                    if (!combinedDrivers[name]) {
+                        combinedDrivers[name] = { name: name, team: car["team"], q1: 0, q2: 0, q3: 0, maxStage: "Q1" };
+                    }
+                    const bestLap = car["best-lap-time"] || (car["car-status"] ? car["car-status"]["best-lap-time"] : 0);
+                    if (bestLap > 0) {
+                        combinedDrivers[name][stageName] = bestLap;
+                        combinedDrivers[name].maxStage = stageName.toUpperCase();
+                    }
+                });
+            };
 
+            parseQualiStage(q1, 'q1');
+            parseQualiStage(q2, 'q2');
+            parseQualiStage(q3, 'q3');
+
+            // 依據 Q3 -> Q2 -> Q1 最優成績綜合排序
+            let sortedQuali = Object.values(combinedDrivers).sort((a, b) => {
+                if (a.q3 && b.q3) return a.q3 - b.q3;
+                if (a.q3 && !b.q3) return -1;
+                if (!a.q3 && b.q3) return 1;
+                if (a.q2 && b.q2) return a.q2 - b.q2;
+                if (a.q2 && !b.q2) return -1;
+                if (!a.q2 && b.q2) return 1;
+                return (a.q1 || 999) - (b.q1 || 999);
+            });
+
+            // 2. 渲染排位賽綜合表
+            sortedQuali.forEach((d, idx) => {
                 tbodyCombined.innerHTML += `
                     <tr>
-                        <td><strong>${rank}</strong></td>
+                        <td><strong>${idx + 1}</strong></td>
                         <td>${d.name}</td>
                         <td>${d.team}</td>
-                        <td>${q1Time}</td>
-                        <td>${q2Time}</td>
-                        <td>${q3Time}</td>
-                        <td><span class="q-badge ${highest==='Q3'?'q3-bg':highest==='Q2'?'q2-bg':'q1-bg'}">${highest}</span></td>
+                        <td>${formatLapTime(d.q1)}</td>
+                        <td>${formatLapTime(d.q2)}</td>
+                        <td>${formatLapTime(d.q3)}</td>
+                        <td><span class="q-badge ${d.maxStage==='Q3'?'q3-bg':d.maxStage==='Q2'?'q2-bg':'q1-bg'}">${d.maxStage}</span></td>
                     </tr>
                 `;
             });
 
-            const stages = [
-                { name: "Q1 階段", data: drivers.slice(0, 5), baseSec: 102.1 },
-                { name: "Q2 階段", data: drivers.slice(0, 5), baseSec: 101.3 },
-                { name: "Q3 階段", data: drivers.slice(0, 5), baseSec: 100.1 }
-            ];
+            // 3. 渲染排位賽各階段最快圈速榜
+            const renderStageTable = (stageKey, stageLabel) => {
+                let stageDrivers = Object.values(combinedDrivers)
+                    。filter(d => d[stageKey] > 0)
+                    。sort((a, b) => a[stageKey] - b[stageKey]);
+                
+                const stageLeaderTime = stageDrivers[0] ? stageDrivers[0][stageKey] : 0;
 
-            stages.forEach(stage => {
-                stage.data.forEach((d, idx) => {
-                    const currentSec = stage.baseSec + (idx * 0.24);
-                    const min = Math.floor(currentSec / 60);
-                    const sec = (currentSec % 60).toFixed(3);
-                    const timeStr = `${min}:${sec < 10 ? '0' : ''}${sec}`;
-                    const gap = idx === 0 ? "P1 榜首" : `+${(idx * 0.24).toFixed(3)}s`;
-
+                stageDrivers.forEach((d, idx) => {
+                    const gap = idx === 0 ? "P1 榜首" : `+${(d[stageKey] - stageLeaderTime).toFixed(3)}s`;
                     tbodyStages.innerHTML += `
                         <tr>
-                            <td><strong>${stage.name}</strong></td>
+                            <td><strong>${stageLabel}</strong></td>
                             <td>${idx + 1}</td>
                             <td>${d.name}</td>
                             <td>${d.team}</td>
-                            <td>${timeStr}</td>
+                            <td>${formatLapTime(d[stageKey])}</td>
                             <td style="color:${idx===0?'var(--accent-green)':'inherit'}">${gap}</td>
                         </tr>
                     `;
                 });
-            });
+            };
+
+            renderStageTable('q1', 'Q1 階段');
+            renderStageTable('q2', 'Q2 階段');
+            renderStageTable('q3', 'Q3 階段');
         }
     }
 </script>
