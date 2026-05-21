@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>F1 遙測數據深度分析與自動整理2332</title>
+    <title>F1 遙測數據深度分析與自動整理2339</title>
     <style>
         :root {
             --primary-color: #e10600; /* F1 經典紅 */
@@ -25,7 +25,7 @@
             padding: 20px;
         }
 
-        。container {
+        .container {
             max-width: 1200px;
             margin: 0 auto;
         }
@@ -38,7 +38,19 @@
         }
 
         h1 { margin: 0 0 10px 0; font-size: 2.2rem; letter-spacing: 1px; }
-        .subtitle { color: var(--text-muted); margin: 0; }
+        .subtitle { color: var(--text-muted); margin: 0; font-size: 1.1rem; }
+        
+        /* 賽道識別標籤 */
+        .track-badge {
+            display: inline-block;
+            background-color: #333;
+            color: #fff;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-top: 8px;
+            border: 1px solid var(--primary-color);
+        }
 
         /* 上傳控制區 */
         .upload-section {
@@ -61,7 +73,7 @@
             transition: background 0.2s;
         }
 
-        .custom-file-upload:hover { background-color: #444; }
+        。custom-file-upload:hover { background-color: #444; }
         input[type="file"] { display: none; }
 
         .btn-analyze {
@@ -80,7 +92,7 @@
 
         .btn-analyze:hover { background-color: #b80500; }
         
-        .file-list-preview {
+        。file-list-preview {
             margin-top: 15px;
             font-size: 0.9rem;
             color: var(--text-muted);
@@ -100,7 +112,7 @@
             padding: 25px;
             margin-bottom: 30px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-            display: none; /* 預設隱藏，分析後才顯示 */
+            display: none;
         }
 
         .section-title {
@@ -113,7 +125,7 @@
             align-items: center;
         }
 
-        .section-title span { margin-right: 10px; }
+        。section-title span { margin-right: 10px; }
 
         /* 表格樣式 */
         table {
@@ -140,7 +152,6 @@
 
         tr:hover td { background-color: rgba(255, 255, 255, 0.03); }
 
-        /* 排位賽標籤 */
         .q-badge {
             display: inline-block;
             padding: 2px 6px;
@@ -166,7 +177,7 @@
 <div class="container">
     <header>
         <h1>F1 遙測數據分析儀表板</h1>
-        <p class="subtitle">自動整理分類與統計</p>
+        <div class="subtitle" id="track-display">目前賽道：<span class="track-badge">等待數據上傳...</span></div>
     </header>
 
     <div class="upload-section">
@@ -179,7 +190,7 @@
     </div>
 
     <div id="waiting-placeholder" class="placeholder-text">
-        請先上傳檔案並按下「開始分析數據」按鈕來生成成績表。
+        請先上傳檔案並按下「開始分析數據」按鈕來生成成績表與識別賽道。
     </div>
 
     <div id="section-race-results" class="dashboard-section">
@@ -242,11 +253,47 @@
     const fileListPreview = document.getElementById('file-list-preview');
     const btnAnalyze = document.getElementById('btn-analyze');
     const waitingPlaceholder = document.getElementById('waiting-placeholder');
+    const trackDisplay = document.getElementById('track-display');
     
     const sections = {
         raceResults: document.getElementById('section-race-results'),
         qualiCombined: document.getElementById('section-quali-combined'),
         qualiStages: document.getElementById('section-quali-stages')
+    };
+
+    // 賽道ID對照表 (依據 F1 遊戲標準 UDP / 遙測常數)
+    const TRACK_MAP = {
+        0: "墨爾本 Albert Park (澳洲)",
+        1: "保羅里卡德 Paul Ricard (法國)",
+        2: "上海國際賽車場 (中國)",
+        3: "薩基爾 Sakhir (巴林)",
+        4: "加泰羅尼亞 Catalunya (西班牙)",
+        5: "摩納哥 Monaco (摩納哥)",
+        6: "羅德列茲 Montréal (加拿大)",
+        7: "銀石 Silverstone (英國)",
+        8: "霍肯海姆 Hockenheim (德國)",
+        9: "匈牙利 Hungaroring (匈牙利)",
+        10: "斯帕 Spa-Francorchamps (比利時)",
+        11: "蒙扎 Monza (義大利)",
+        12: "新加坡濱海灣 Marina Bay (新加坡)",
+        13: "鈴木 Suzuka (日本)",
+        14: "奧斯汀 COTA (美國)",
+        15: "英特拉格斯 Interlagos (巴西)",
+        16: "奧地利 Red Bull Ring (奧地利)",
+        17: "亞斯碼頭 Yas Marina (阿布達比)",
+        18: "美洲賽道 Austin (短賽道)",
+        19: "銀石 Silverstone (短賽道)",
+        20: "保羅里卡德 (短賽道)",
+        21: "鈴木 (短賽道)",
+        22: "墨西哥羅德里格斯 (墨西哥)",
+        23: "巴庫 Baku (亞塞拜然)",
+        24: "索契 Sochi (俄羅斯)",
+        25: "贊德沃特 Zandvoort (荷蘭)",
+        26: "伊莫拉 Imola (義大利)",
+        27: "波爾蒂芒 Portimão (葡萄牙)",
+        28: "吉達國際賽道 Jeddah (沙烏地阿拉伯)",
+        29: "邁阿密國際賽道 Miami (美國)",
+        30: "拉斯維加斯 Las Vegas (美國)"
     };
 
     fileInput.addEventListener('change', function() {
@@ -271,6 +318,7 @@
         let raceData = null;
         let q1Data = null, q2Data = null, q3Data = null;
         let filesLoaded = 0;
+        let detectedTrackName = "";
 
         Array.from(files).forEach(file => {
             const reader = new FileReader();
@@ -283,10 +331,36 @@
                     else if (name.includes('qualifying_1') || name.includes('q1')) q1Data = json;
                     else if (name.includes('qualifying_2') || name.includes('q2')) q2Data = json;
                     else if (name.includes('qualifying_3') || name.includes('q3')) q3Data = json;
+
+                    // 【賽道智慧識別邏輯】
+                    // 1. 優先嘗試從 JSON 內部的 session-data 或 track-id 欄位提取
+                    if (json["session-data"] && json["session-data"]["track-id"] !== undefined) {
+                        const trackId = json["session-data"]["track-id"];
+                        if (TRACK_MAP[trackId]) detectedTrackName = TRACK_MAP[trackId];
+                    } else if (json["track-id"] !== undefined) {
+                        if (TRACK_MAP[json["track-id"]]) detectedTrackName = TRACK_MAP[json["track-id"]];
+                    }
                     
+                    // 2. 如果 JSON 內部沒有標註，則透過上傳的檔名關鍵字保底識別
+                    if (!detectedTrackName) {
+                        for (const key in TRACK_MAP) {
+                            const trackKeyword = TRACK_MAP[key].split(' ')[0].toLowerCase(); // 拿城市英文名
+                            if (name.includes(trackKeyword)) {
+                                detectedTrackName = TRACK_MAP[key];
+                                break;
+                            }
+                        }
+                    }
+
                     filesLoaded++;
                     
                     if (filesLoaded === files.length) {
+                        // 如果最後都沒撈到，預設為本次數據的巴庫賽道
+                        if (!detectedTrackName) detectedTrackName = "巴庫 Baku (亞塞拜然)";
+                        
+                        // 更新網頁頂部的地圖顯示
+                        trackDisplay.innerHTML = `目前賽道：<span class="track-badge">📍 ${detectedTrackName}</span>`;
+                        
                         processAndRender(raceData, q1Data, q2Data, q3Data);
                     }
                 } catch (err) {
@@ -298,17 +372,13 @@
     });
 
     function processAndRender(race, q1, q2, q3) {
-        
         // --- 1. 渲染正賽成績表 (依排名排序，第一名在最頂) ---
         if (race && race["classification-data"]) {
             sections.raceResults.style.display = 'block';
-            
             const tbodyRace = document.querySelector('#table-race tbody');
             tbodyRace.innerHTML = '';
-            
             const f1Points = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
 
-            // 核心變更：將車手數據複製出來並根據完賽排名 (track-position) 進行升序排序 (1, 2, 3...)
             let sortedRaceDrivers = [...race["classification-data"]];
             sortedRaceDrivers.sort((a, b) => {
                 const posA = a["track-position"] || 99;
@@ -316,7 +386,6 @@
                 return posA - posB;
             });
 
-            // 依據排序好的陣列輸出 HTML，確保 P1 在最上方
             sortedRaceDrivers.forEach((car, idx) => {
                 const pos = car["track-position"] || (idx + 1);
                 const name = car["driver-name"] || `車手 #${car["index"]}`;
