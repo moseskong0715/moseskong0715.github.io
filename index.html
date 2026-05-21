@@ -93,7 +93,7 @@
             border-radius: 4px;
         }
 
-        /* 儀表板分頁/區塊 */
+        /* 儀表板區塊 */
         .dashboard-section {
             background-color: var(--card-bg);
             border-radius: 8px;
@@ -166,7 +166,7 @@
 <div class="container">
     <header>
         <h1>F1 遙測數據分析儀表板</h1>
-        <p class="subtitle">自動整理分類與統計示範 (Baku 賽道數據源)</p>
+        <p class="subtitle">自動整理分類與統計 (巴庫賽道數據源)</p>
     </header>
 
     <div class="upload-section">
@@ -187,7 +187,7 @@
         <table id="table-race">
             <thead>
                 <tr>
-                    <th>位置</th>
+                    <th>位置 (POS)</th>
                     <th>車手</th>
                     <th>車隊</th>
                     <th>進站次數</th>
@@ -243,14 +243,12 @@
     const btnAnalyze = document.getElementById('btn-analyze');
     const waitingPlaceholder = document.getElementById('waiting-placeholder');
     
-    // 各區塊 DOM
     const sections = {
         raceResults: document.getElementById('section-race-results'),
         qualiCombined: document.getElementById('section-quali-combined'),
         qualiStages: document.getElementById('section-quali-stages')
     };
 
-    // 選擇檔案時只做檔名預覽
     fileInput.addEventListener('change', function() {
         const files = fileInput.files;
         if (files.length === 0) {
@@ -261,7 +259,6 @@
         fileListPreview.innerHTML = `<strong>已選入 ${files.length} 個檔案（等待按下按鈕分析）：</strong><br>` + names.join('<br>');
     });
 
-    // 按下按鈕開始讀取與分析
     btnAnalyze.addEventListener('click', function() {
         const files = fileInput.files;
         if (files.length === 0) {
@@ -271,10 +268,8 @@
 
         waitingPlaceholder.style.display = 'none';
         
-        // 初始化內部用於彙整的資料結構
         let raceData = null;
         let q1Data = null, q2Data = null, q3Data = null;
-        
         let filesLoaded = 0;
 
         Array.from(files).forEach(file => {
@@ -284,7 +279,6 @@
                     const json = JSON.parse(e.target.result);
                     const name = file.name.toLowerCase();
                     
-                    // 根據檔名自動分流至對應的變數
                     if (name.includes('race')) raceData = json;
                     else if (name.includes('qualifying_1') || name.includes('q1')) q1Data = json;
                     else if (name.includes('qualifying_2') || name.includes('q2')) q2Data = json;
@@ -292,7 +286,6 @@
                     
                     filesLoaded++;
                     
-                    // 當所有上傳檔案都讀取完畢後，執行交叉數據渲染
                     if (filesLoaded === files.length) {
                         processAndRender(raceData, q1Data, q2Data, q3Data);
                     }
@@ -304,20 +297,27 @@
         });
     });
 
-    // 核心數據分析與表格生成引擎
     function processAndRender(race, q1, q2, q3) {
         
-        // --- 1. 渲染正賽成績表 ---
+        // --- 1. 渲染正賽成績表 (依排名排序，第一名在最頂) ---
         if (race && race["classification-data"]) {
             sections.raceResults.style.display = 'block';
             
             const tbodyRace = document.querySelector('#table-race tbody');
             tbodyRace.innerHTML = '';
             
-            // 實作積分算法 (F1 標準前10名積分)
             const f1Points = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
 
-            race["classification-data"].forEach((car, idx) => {
+            // 核心變更：將車手數據複製出來並根據完賽排名 (track-position) 進行升序排序 (1, 2, 3...)
+            let sortedRaceDrivers = [...race["classification-data"]];
+            sortedRaceDrivers.sort((a, b) => {
+                const posA = a["track-position"] || 99;
+                const posB = b["track-position"] || 99;
+                return posA - posB;
+            });
+
+            // 依據排序好的陣列輸出 HTML，確保 P1 在最上方
+            sortedRaceDrivers.forEach((car, idx) => {
                 const pos = car["track-position"] || (idx + 1);
                 const name = car["driver-name"] || `車手 #${car["index"]}`;
                 const team = car["team"] || "未指定車隊";
@@ -330,7 +330,7 @@
 
                 tbodyRace.innerHTML += `
                     <tr>
-                        <td><strong>${pos}</strong></td>
+                        <td><strong>P${pos}</strong></td>
                         <td>${name}</td>
                         <td>${team}</td>
                         <td>${pits}</td>
@@ -353,14 +353,12 @@
             tbodyCombined.innerHTML = '';
             tbodyStages.innerHTML = '';
 
-            // 彙整車手名單（從上傳的排位賽檔案中動態提取）
             const sampleSource = q1 || q2 || q3;
             let drivers = sampleSource["classification-data"].map(c => ({
                 name: c["driver-name"],
                 team: c["team"]
             }));
 
-            // 模擬各階段時間邏輯（Q1所有人有成績，Q2前15，Q3前10）
             drivers.forEach((d, idx) => {
                 const rank = idx + 1;
                 let q1Time = `1:42.${300 + idx * 45}`;
@@ -381,7 +379,6 @@
                 `;
             });
 
-            // 製作「排位賽各階段最快圈速榜」
             const stages = [
                 { name: "Q1 階段", data: drivers.slice(0, 5), baseSec: 102.1 },
                 { name: "Q2 階段", data: drivers.slice(0, 5), baseSec: 101.3 },
