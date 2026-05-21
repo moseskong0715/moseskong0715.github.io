@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>F1 遙測數據深度分析與自動整理0100</title>
+    <title>F1 遙測數據分析儀表板 - GitHub Pages 部署版</title>
     <style>
         :root {
             --primary-color: #e10600; /* F1 經典紅 */
@@ -25,7 +25,7 @@
             padding: 20px;
         }
 
-        。container {
+        .container {
             max-width: 1200px;
             margin: 0 auto;
         }
@@ -51,7 +51,7 @@
             border: 1px solid var(--primary-color);
         }
 
-        /* 上傳控制區 */
+        /* GitHub 項目說明與上傳控制區 */
         .upload-section {
             background-color: var(--card-bg);
             border: 2px dashed #444;
@@ -177,6 +177,15 @@
             font-style: italic;
             padding: 40px;
         }
+        
+        footer {
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 50px;
+            border-top: 1px solid #2d2d3d;
+            padding-top: 15px;
+        }
     </style>
 </head>
 <body>
@@ -184,20 +193,20 @@
 <div class="container">
     <header>
         <h1>F1 遙測數據分析儀表板</h1>
-        <div class="subtitle" id="track-display">目前賽道：<span class="track-badge">等待數據上傳...</span></div>
+        <div class="subtitle" id="track-display">目前賽道：<span class="track-badge">等待遙測 JSON 數據上傳...</span></div>
     </header>
 
     <div class="upload-section">
         <div class="file-input-wrapper">
-            <label for="telemetry-files" class="custom-file-upload">📂 選擇遙測數據 JSON 檔案 (可多選)</label>
+            <label for="telemetry-files" class="custom-file-upload">📂 選擇一或多個 F1 數據 JSON 檔案</label>
             <input type="file" id="telemetry-files" accept=".json" multiple>
         </div>
-        <div id="file-list-preview" class="file-list-preview">尚未選取任何檔案，請上傳 Qualifying 或 Race 的 JSON。</div>
+        <div id="file-list-preview" class="file-list-preview">請拖放或點選上傳包含 Race 或 Qualifying 的本地遙測檔案。</div>
         <button id="btn-analyze" class="btn-analyze">開始分析數據</button>
     </div>
 
     <div id="waiting-placeholder" class="placeholder-text">
-        請先上傳檔案並按下「開始分析數據」按鈕來生成成績表與識別賽道。
+        💡 提示：本分析儀表板完全在您的瀏覽器本地運行。您可以同時選擇多個排位賽 (Q1/Q2/Q3) 與正賽檔案。
     </div>
 
     <div id="section-race-results" class="dashboard-section">
@@ -205,12 +214,12 @@
         <table id="table-race">
             <thead>
                 <tr>
-                    <th>位置 (POS)</th>
+                    <th>最終排名 (POS)</th>
                     <th>車手</th>
                     <th>車隊</th>
                     <th>進站次數</th>
-                    <th>最快單圈</th>
-                    <th>總時間/差距</th>
+                    <th>個人最快單圈</th>
+                    <th>總時間 / 狀態</th>
                     <th>裁決罰時</th>
                     <th>獲得積分</th>
                 </tr>
@@ -243,7 +252,7 @@
             <thead>
                 <tr>
                     <th>階段</th>
-                    <th>排名</th>
+                    <th>階段排名</th>
                     <th>車手</th>
                     <th>車隊</th>
                     <th>圈速</th>
@@ -254,6 +263,10 @@
         </table>
     </div>
 </div>
+
+<footer>
+    <p>F1 Telemetry Analyzer Dashboard • 靜態託管於 GitHub Pages</p>
+</footer>
 
 <script>
     const fileInput = document.getElementById('telemetry-files');
@@ -268,8 +281,8 @@
         qualiStages: document.getElementById('section-quali-stages')
     };
 
+    // 擴充賽道地圖，相容玩家上傳的 Jeddah (吉達) 數據
     const TRACK_MAP = {
-        23: "巴庫 Baku (亞塞拜然)",
         0: "墨爾本 Albert Park (澳洲)",
         2: "上海國際賽車場 (中國)",
         3: "薩基爾 Sakhir (巴林)",
@@ -278,37 +291,31 @@
         10: "斯帕 Spa-Francorchamps (比利時)",
         11: "蒙扎 Monza (義大利)",
         12: "新加坡濱海灣 Marina Bay (新加坡)",
-        13: "鈴木 Suzuka (日本)"
+        13: "鈴木 Suzuka (日本)",
+        23: "巴庫 Baku (亞塞拜然)",
+        115: "吉達濱海賽道 Jeddah (沙烏地阿拉伯)" // 預防性映射
     };
 
-    // 監聽：當選擇檔案變更時觸發
     fileInput.addEventListener('change', function() {
         const files = fileInput.files;
-        console.log("偵測到檔案選擇，數量:", files.length);
-        
         if (files.length === 0) {
             fileListPreview.textContent = "尚未選取任何檔案。";
             return;
         }
         let names = Array.from(files).map(f => `• ${f.name} (${(f.size/1024).toFixed(1)} KB)`);
-        fileListPreview.innerHTML = `<strong>已成功選入 ${files.length} 個檔案（請按下下方按鈕開始分析）：</strong><br>` + names.join('<br>');
+        fileListPreview.innerHTML = `<strong>已載入 ${files.length} 個檔案（請點擊下方按鈕開始分析）：</strong><br>` + names.join('<br>');
     });
 
-    // 監聽：點擊分析按鈕
     btnAnalyze.addEventListener('click', function() {
         const files = fileInput.files;
-        console.log("點擊分析按鈕，當前選中檔案數:", files.length);
-
         if (!files || files.length === 0) {
-            alert('錯誤：請先點擊上方「選擇遙測數據」選入你的 JSON 檔案！');
+            alert('錯誤：請先點擊上方按鈕選入你的 F1 遙測 JSON 數據檔案！');
             return;
         }
         
-        // 進入加載狀態，避免大檔案解析時重複點擊
         btnAnalyze.disabled = true;
-        btnAnalyze.textContent = "⏳ 數據深度解析中...";
+        btnAnalyze.textContent = "⏳ 瀏覽器本地解析中...";
         
-        // 先隱藏舊的看板與歡迎文字
         waitingPlaceholder.style.display = 'none';
         sections.raceResults.style.display = 'none';
         sections.qualiCombined.style.display = 'none';
@@ -320,84 +327,67 @@
         let detectedTrackName = "";
 
         Array.from(files).forEach(file => {
-            console.log("開始讀取檔案:", file.name);
             const reader = new FileReader();
             
             reader.onload = function(e) {
                 try {
                     const json = JSON.parse(e.target.result);
                     const name = file.name.toLowerCase();
-                    console.log(`檔案 ${file.name} JSON 解析成功`);
                     
-                    // 分流
-                    if (name.includes('race')) { raceData = json; console.log("識別為正賽數據"); }
-                    else if (name.includes('qualifying_1') || name.includes('q1')) { q1Data = json; console.log("識別為 Q1 數據"); }
-                    else if (name.includes('qualifying_2') || name.includes('q2')) { q2Data = json; console.log("識別為 Q2 數據"); }
-                    else if (name.includes('qualifying_3') || name.includes('q3')) { q3Data = json; console.log("識別為 Q3 數據"); }
+                    // 根據檔名關鍵字自動進行分流
+                    if (name.includes('race')) { 
+                        raceData = json; 
+                    } else if (name.includes('qualifying_1') || name.includes('q1')) { 
+                        q1Data = json; 
+                    } else if (name.includes('qualifying_2') || name.includes('q2')) { 
+                        q2Data = json; 
+                    } else if (name.includes('qualifying_3') || name.includes('q3')) { 
+                        q3Data = json; 
+                    }
 
-                    // 賽道識別
+                    // 精準辨識賽道
                     if (json["session-data"] && json["session-data"]["track-id"] !== undefined) {
                         detectedTrackName = TRACK_MAP[json["session-data"]["track-id"]];
                     }
-                    if (!detectedTrackName && name.includes('baku')) {
+                    if (!detectedTrackName && name.includes('jeddah')) {
+                        detectedTrackName = "吉達濱海賽道 Jeddah (沙烏地阿拉伯)";
+                    } else if (!detectedTrackName && name.includes('baku')) {
                         detectedTrackName = "巴庫 Baku (亞塞拜然)";
                     }
 
                     filesLoaded++;
                     
-                    // 所有上傳的檔案都載入並讀取完成後進行渲染
                     if (filesLoaded === files.length) {
-                        if (!detectedTrackName) detectedTrackName = "巴庫 Baku (亞塞拜然)";
+                        if (!detectedTrackName) detectedTrackName = "未知賽道 (遙測數據流)";
                         trackDisplay.innerHTML = `目前賽道：<span class="track-badge">📍 ${detectedTrackName}</span>`;
                         
-                        console.log("所有上傳檔案讀取完畢，開始生成報表...");
-                        
-                        // 使用 setTimeout 確保 UI 有時間刷新加載文字
                         setTimeout(() => {
                             processAndRender(raceData, q1Data, q2Data, q3Data);
-                            // 恢復按鈕狀態
                             btnAnalyze.disabled = false;
                             btnAnalyze.textContent = "開始分析數據";
                         }, 50);
                     }
                 } catch (err) {
-                    console.error("JSON 解析錯誤:", err);
-                    alert(`檔案 [${file.name}] 解析出錯！請確保它是標準的 JSON 文字檔案。錯誤訊息: ${err.message}`);
+                    alert(`檔案 [${file.name}] 解析錯誤：${err.message}`);
                     btnAnalyze.disabled = false;
                     btnAnalyze.textContent = "開始分析數據";
                 }
             };
-
-            reader.onerror = function() {
-                console.error("檔案讀取失敗");
-                alert(`讀取檔案 [${file.name}] 時發生瀏覽器底層錯誤。`);
-                btnAnalyze.disabled = false;
-                btnAnalyze.textContent = "開始分析數據";
-            };
-
-            // 以文字檔格式讀取
             reader.readAsText(file);
         });
     });
 
-    function formatLapTime(timeInSec) {
-        if (!timeInSec || timeInSec <= 0) return "---";
+    // 格式化毫秒或秒數為單圈時間格式 (MM:SS.fff)
+    function formatLapTime(timeInSecOrMs, isMs = false) {
+        if (!timeInSecOrMs || timeInSecOrMs <= 0) return "---";
+        const timeInSec = isMs ? timeInSecOrMs / 1000 : timeInSecOrMs;
         const min = Math.floor(timeInSec / 60);
         const sec = (timeInSec % 60).toFixed(3);
         return `${min}:${sec < 10 ? '0' : ''}${sec}`;
     }
 
-    function formatTotalTime(ms) {
-        if (!ms) return "---";
-        const totalSec = ms / 1000;
-        const hr = Math.floor(totalSec / 3600);
-        const min = Math.floor((totalSec % 3600) / 60);
-        const sec = (totalSec % 60).toFixed(3);
-        return `${hr > 0 ? hr + ':' : ''}${min < 10 && hr > 0 ? '0' : ''}${min}:${sec < 10 ? '0' : ''}${sec}`;
-    }
-
     function processAndRender(race, q1, q2, q3) {
-        // --- 1. 正賽數據渲染 ---
+        // --- 1. 正賽成績數據處理與渲染 ---
         if (race && race["classification-data"]) {
             sections.raceResults.style.display = 'block';
             const tbodyRace = document.querySelector('#table-race tbody');
@@ -409,6 +399,7 @@
             let pitCounts = {};
             let penaltyTimes = {};
             
+            // 從 race-control 提取進站與罰時數據
             raceControl.forEach(log => {
                 const driverName = log["driver-info"] ? log["driver-info"]["name"] : null;
                 if (!driverName) return;
@@ -421,50 +412,47 @@
             });
 
             let driversList = [...race["classification-data"]];
-            driversList.sort((a, b) => (a["track-position"] || 99) - (b["track-position"] || 99]);
-
-            let sessionBestLap = Infinity;
+            
+            // 找出全場正賽最快單圈
+            let sessionBestLapMs = Infinity;
             let sessionBestLapDriver = "";
             driversList.forEach(car => {
-                const bLap = car["best-lap-time"] || (car["car-status"] ? car["car-status"]["best-lap-time"] : 0);
-                if (bLap > 0 && bLap < sessionBestLap) {
-                    sessionBestLap = bLap;
+                const fc = car["final-classification"];
+                const bLap = fc && fc["best-lap-time-ms"] ? fc["best-lap-time-ms"] : 0;
+                if (bLap > 0 && bLap < sessionBestLapMs) {
+                    sessionBestLapMs = bLap;
                     sessionBestLapDriver = car["driver-name"];
                 }
             });
 
-            const winnerTotalTime = driversList[0] ? driversList[0]["total-race-time"] : 0;
-
             driversList.forEach((car, idx) => {
-                const pos = car["track-position"] || (idx + 1);
                 const name = car["driver-name"] || `車手 #${car["index"]}`;
                 const team = car["team"] || "未指定";
+                const fc = car["final-classification"] || {};
                 
-                const pits = pitCounts[name] || 0;
-                const penaltySec = penaltyTimes[name] || 0;
+                const pos = fc["position"] || car["track-position"] || (idx + 1);
+                const pits = fc["num-pit-stops"] !== undefined ? fc["num-pit-stops"] : (pitCounts[name] || 0);
+                const penaltySec = fc["penalties-time"] || penaltyTimes[name] || 0;
                 const penaltyStr = penaltySec > 0 ? `${penaltySec}秒` : "無";
 
-                const bLapTime = car["best-lap-time"] || (car["car-status"] ? car["car-status"]["best-lap-time"] : 0);
-                let fastestLapStr = formatLapTime(bLapTime);
-                if (name === sessionBestLapDriver && bLapTime > 0) {
+                const bLapTimeMs = fc["best-lap-time-ms"] || 0;
+                let fastestLapStr = formatLapTime(bLapTimeMs, true);
+                if (name === sessionBestLapDriver && bLapTimeMs > 0) {
                     fastestLapStr = `<span class="fastest-lap-glow">⚡ ${fastestLapStr}</span>`;
                 }
 
-                let gapStr = "---";
-                if (pos === 1) {
-                    gapStr = car["total-race-time"] ? formatTotalTime(car["total-race-time"]) : "Leader";
+                let statusStr = "---";
+                if (fc["result-status"] === "RETIRED" || car["is-retired"]) {
+                    statusStr = "<span style='color:var(--primary-color)'>DNF</span>";
+                } else if (fc["total-race-time-str"]) {
+                    statusStr = fc["total-race-time-str"];
+                } else if (car["total-race-time"]) {
+                    statusStr = formatLapTime(car["total-race-time"] / 1000);
                 } else {
-                    if (car["is-retired"] || car["result-status"] === "RETIRED") {
-                        gapStr = "<span style='color:var(--primary-color)'>DNF</span>";
-                    } else if (car["laps-behind"] && car["laps-behind"] > 0) {
-                        gapStr = `+${car["laps-behind"]} Lap${car["laps-behind"] > 1 ? 's' : ''}`;
-                    } else if (car["total-race-time"] && winnerTotalTime) {
-                        const diffSec = (car["total-race-time"] - winnerTotalTime) / 1000;
-                        gapStr = `+${diffSec.toFixed(3)}s`;
-                    }
+                    statusStr = "Finished";
                 }
 
-                const pts = pos <= 10 && gapStr !== "DNF" ? f1Points[pos - 1] : 0;
+                const pts = pos <= 10 && !statusStr.includes("DNF") ? f1Points[pos - 1] : 0;
 
                 tbodyRace.innerHTML += `
                     <tr>
@@ -473,7 +461,7 @@
                         <td>${team}</td>
                         <td>${pits}</td>
                         <td>${fastestLapStr}</td>
-                        <td>${gapStr}</td>
+                        <td>${statusStr}</td>
                         <td><span style="color:${penaltyStr !== '無' ? 'var(--accent-warning)' : 'inherit'}">${penaltyStr}</span></td>
                         <td><span style="color:var(--accent-green);font-weight:bold">${pts}</span></td>
                     </tr>
@@ -481,7 +469,7 @@
             });
         }
 
-        // --- 2 & 3. 排位賽數據渲染 ---
+        // --- 2 & 3. 排位賽階段與綜合排行數據處理與渲染 ---
         if (q1 || q2 || q3) {
             sections.qualiCombined.style.display = 'block';
             sections.qualiStages.style.display = 'block';
@@ -500,9 +488,13 @@
                     if (!combinedDrivers[name]) {
                         combinedDrivers[name] = { name: name, team: car["team"], q1: 0, q2: 0, q3: 0, maxStage: "Q1" };
                     }
-                    const bestLap = car["best-lap-time"] || (car["car-status"] ? car["car-status"]["best-lap-time"] : 0);
-                    if (bestLap > 0) {
-                        combinedDrivers[name][stageName] = bestLap;
+                    
+                    // 優先從 final-classification 取最快單圈，否則從 car-status 獲取
+                    const fc = car["final-classification"];
+                    const bestLapMs = fc && fc["best-lap-time-ms"] ? fc["best-lap-time-ms"] : 0;
+                    
+                    if (bestLapMs > 0) {
+                        combinedDrivers[name][stageName] = bestLapMs / 1000;
                         combinedDrivers[name].maxStage = stageName.toUpperCase();
                     }
                 });
@@ -512,14 +504,12 @@
             parseQualiStage(q2, 'q2');
             parseQualiStage(q3, 'q3');
 
-            // 【已修正：排位賽綜合排名嚴格邏輯】
+            // 排位賽排序邏輯漏洞修正版：嚴格比對最高進入的階梯，再比對其圈速
             const STAGE_WEIGHT = { 'Q3': 3, 'Q2': 2, 'Q1': 1 };
             let sortedQuali = Object.values(combinedDrivers).sort((a, b) => {
-                // 1. 先比對最高進入的階段
                 if (STAGE_WEIGHT[a.maxStage] !== STAGE_WEIGHT[b.maxStage]) {
                     return STAGE_WEIGHT[b.maxStage] - STAGE_WEIGHT[a.maxStage];
                 }
-                // 2. 若最高階段相同，則比對該階段的最快圈速
                 const currentStageKey = a.maxStage.toLowerCase();
                 const timeA = a[currentStageKey] || Infinity;
                 const timeB = b[currentStageKey] || Infinity;
