@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>F1 遙測數據分析儀表板 - GitHub Pages 專用版</title>
+    <title>F1 遙測數據分析儀表板 - GitHub Pages 修正版</title>
     <style>
         :root {
             --primary-color: #e10600; /* F1 經典紅 */
@@ -142,11 +142,10 @@
             padding: 20px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
             display: none;
-            border-top: 4px solid var(--accent-blue);
         }
-        .quali-card.q1-card { border-top-color: #ff4500; }
-        .quali-card.q2-card { border-top-color: #ff8c00; }
-        .quali-card.q3-card { border-top-color: var(--accent-blue); }
+        .quali-card.q1-card { border-top: 4px solid #ff4500; }
+        .quali-card.q2-card { border-top: 4px solid #ff8c00; }
+        .quali-card.q3-card { border-top: 4px solid var(--accent-blue); }
 
         .card-title {
             font-size: 1.25rem;
@@ -221,7 +220,7 @@
 
 <div class="container">
     <header>
-        <h1>F1 遙測數據分析儀表板</h1>
+        <h1>F1 遙測數據分析儀表板0112</h1>
         <div class="subtitle" id="track-display">目前賽道：<span class="track-badge">等待遙測 JSON 數據上傳...</span></div>
     </header>
 
@@ -449,7 +448,7 @@
     }
 
     function processAndRender(race, q1, q2, q3) {
-        // --- 1. 正賽排名渲染（第一名置頂排列） ---
+        // --- 1. 正賽排名渲染 ---
         if (race && race["classification-data"]) {
             sections.raceResults.style.display = 'block';
             const tbodyRace = document.querySelector('#table-race tbody');
@@ -474,14 +473,12 @@
 
             let driversList = [...race["classification-data"]];
             
-            // 【核心修正】正賽結果依據完賽位置 (Position) 進行精確升序排序，保證 P1 在最上面
             driversList.sort((a, b) => {
                 const posA = (a["final-classification"] && a["final-classification"]["position"]) || a["track-position"] || 99;
                 const posB = (b["final-classification"] && b["final-classification"]["position"]) || b["track-position"] || 99;
                 return posA - posB;
             });
 
-            // 尋找全場最快圈速
             let sessionBestLapMs = Infinity;
             let sessionBestLapDriver = "";
             driversList.forEach(car => {
@@ -537,36 +534,62 @@
             });
         }
 
-        // --- 2 & 3. 排位賽（綜合榜 + 三個分段列表） ---
+        // --- 2 & 3. 排位賽數據精確清洗與分流 ---
         if (q1 || q2 || q3) {
             sections.qualiCombined.style.display = 'block';
-            
             const tbodyCombined = document.querySelector('#table-quali-combined tbody');
             tbodyCombined.innerHTML = '';
 
+            // 【徹底重置核心緩存】防止多次點擊或歷史數據交叉污染
             let combinedDrivers = {};
+
+            // 用於儲存三個階段真正有效的單圈數據（徹底杜絕階段錯位）
+            let stageStrictData = { q1: [], q2: [], q3: [] };
 
             const parseQualiStage = (stageData, stageName) => {
                 if (!stageData || !stageData["classification-data"]) return;
+                
                 stageData["classification-data"].forEach(car => {
                     const name = car["driver-name"];
-                    if (!combinedDrivers[name]) {
-                        combinedDrivers[name] = { name: name, team: car["team"], q1: 0, q2: 0, q3: 0, maxStage: "Q1" };
-                    }
+                    const team = car["team"] || "未指定";
+                    
+                    // 提取此單一 JSON 檔案內的最終分類最佳單圈
                     const fc = car["final-classification"];
                     const bestLapMs = fc && fc["best-lap-time-ms"] ? fc["best-lap-time-ms"] : 0;
+                    
+                    // 【嚴格驗證】只有在當前階段圈速大於 0 的車手才被承認加入了該階段跑圈
                     if (bestLapMs > 0) {
-                        combinedDrivers[name][stageName] = bestLapMs / 1000;
-                        combinedDrivers[name].maxStage = stageName.toUpperCase();
+                        const lapInSeconds = bestLapMs / 1000;
+                        
+                        // 1. 更新綜合排行對象
+                        if (!combinedDrivers[name]) {
+                            combinedDrivers[name] = { name: name, team: team, q1: 0, q2: 0, q3: 0, maxStage: "Q1" };
+                        }
+                        combinedDrivers[name][stageName] = lapInSeconds;
+                        
+                        // 更新最高進入階段（權重覆蓋）
+                        const STAGE_LEVELS = { 'q1': 'Q1', 'q2': 'Q2', 'q3': 'Q3' };
+                        const currentWeight = { 'Q1': 1, 'Q2': 2, 'Q3': 3 };
+                        if (currentWeight[STAGE_LEVELS[stageName]] > currentWeight[combinedDrivers[name].maxStage]) {
+                            combinedDrivers[name].maxStage = STAGE_LEVELS[stageName];
+                        }
+
+                        // 2. 寫入該階段嚴格獨立的陣列中，供獨立列表渲染使用
+                        stageStrictData[stageName].push({
+                            name: name,
+                            team: team,
+                            lapTime: lapInSeconds
+                        });
                     }
                 });
             };
 
+            // 按順序獨立解析
             parseQualiStage(q1, 'q1');
             parseQualiStage(q2, 'q2');
             parseQualiStage(q3, 'q3');
 
-            // 綜合排名
+            // 綜合排名邏輯生成
             const STAGE_WEIGHT = { 'Q3': 3, 'Q2': 2, 'Q1': 1 };
             let sortedQuali = Object.values(combinedDrivers).sort((a, b) => {
                 if (STAGE_WEIGHT[a.maxStage] !== STAGE_WEIGHT[b.maxStage]) {
@@ -590,26 +613,28 @@
                 `;
             });
 
-            // 【新功能】獨立渲染 Q1、Q2、Q3 三個分流列表
+            // 【新邏輯】使用精確清洗後的數據單獨渲染三個分流列表，絕不串場
             const renderIndividualStage = (stageKey, cardEl, tableId) => {
-                let stageDrivers = Object.values(combinedDrivers)
-                    .filter(d => d[stageKey] > 0)
-                    .sort((a, b) => a[stageKey] - b[stageKey]);
+                let drivers = stageStrictData[stageKey];
                 
-                if (stageDrivers.length > 0) {
+                // 只有當該階段確實有合法跑圈數據時才顯示卡片
+                if (drivers && drivers.length > 0) {
+                    // 由快到慢排序
+                    drivers.sort((a, b) => a.lapTime - b.lapTime);
+                    
                     cardEl.style.display = 'block';
                     const tbody = document.querySelector(`#${tableId} tbody`);
                     tbody.innerHTML = '';
                     
-                    const leaderTime = stageDrivers[0][stageKey];
-                    stageDrivers.forEach((d, idx) => {
-                        const gap = idx === 0 ? "P1 榜首" : `+${(d[stageKey] - leaderTime).toFixed(3)}s`;
+                    const leaderTime = drivers[0].lapTime;
+                    drivers.forEach((d, idx) => {
+                        const gap = idx === 0 ? "P1 榜首" : `+${(d.lapTime - leaderTime).toFixed(3)}s`;
                         tbody.innerHTML += `
                             <tr>
                                 <td><strong>${idx + 1}</strong></td>
                                 <td>${d.name}</td>
                                 <td>${d.team}</td>
-                                <td>${formatLapTime(d[stageKey])}</td>
+                                <td>${formatLapTime(d.lapTime)}</td>
                                 <td style="color:${idx === 0 ? 'var(--accent-green)' : 'inherit'}">${gap}</td>
                             </tr>
                         `;
